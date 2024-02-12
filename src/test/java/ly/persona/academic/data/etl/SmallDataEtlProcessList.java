@@ -7,8 +7,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import ly.persona.academic.data.TestData;
-import org.junit.Test;
 
 /**
  * Keeps all records in the memory.

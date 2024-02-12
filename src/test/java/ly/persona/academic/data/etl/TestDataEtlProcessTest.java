@@ -3,7 +3,6 @@ package ly.persona.academic.data.etl;
 import java.util.ArrayList;
 import ly.persona.academic.data.DataGenerator;
 import ly.persona.academic.data.DataReader;
-import ly.persona.academic.data.TestData;
 import org.junit.Assert;
 import org.junit.Test;
 

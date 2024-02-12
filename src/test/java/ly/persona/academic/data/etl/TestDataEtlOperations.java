@@ -4,7 +4,6 @@ import java.util.Comparator;
 import java.util.function.BinaryOperator;
 import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
-import ly.persona.academic.data.TestData;
 
 public interface TestDataEtlOperations {
     UnaryOperator<TestData> MAP_FUNCTION = d -> {
