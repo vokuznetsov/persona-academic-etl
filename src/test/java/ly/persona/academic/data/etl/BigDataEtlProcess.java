@@ -31,7 +31,6 @@ public class BigDataEtlProcess implements EtlProcess<TestData>, TestDataEtlOpera
 
     @Override
     public void process(DataReader<TestData> reader, DataWriter<TestData> writer) {
-
         BinaryOperator<TestData> reduceFunction = (o1, o2) -> new TestData(o1.getKey(),
             o1.getValue());
         DataProcessingPipeline<TestData> pipeline = new DataProcessingPipeline<>();
@@ -41,11 +40,7 @@ public class BigDataEtlProcess implements EtlProcess<TestData>, TestDataEtlOpera
         pipeline.addStep(new SortPipelineStep<>(COMPARATOR));
 
         ExternalMergeSortEtlProcess<TestData> fileProcessor = new ExternalMergeSortEtlProcess<>(
-            pipeline,
-            TestData.class,
-            COMPARATOR,
-            //reduceFunction
-            null
+            COMPARATOR, reduceFunction, pipeline, TestData.class
         );
         fileProcessor.process(reader, writer);
     }

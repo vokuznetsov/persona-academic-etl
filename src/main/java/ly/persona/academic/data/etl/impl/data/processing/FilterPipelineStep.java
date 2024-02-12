@@ -12,7 +12,6 @@ public class FilterPipelineStep<T> implements PipelineStep<T> {
         this.filterFunction = filterFunction;
     }
 
-
     @Override
     public List<T> execute(List<T> data) {
         final List<T> newData = new ArrayList<>(data.size());

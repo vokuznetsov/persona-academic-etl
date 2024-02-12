@@ -14,8 +14,6 @@ public class FileStorageServiceImpl<T> implements StorageService<T> {
     @Override
     public File createFile(List<T> data) {
         try {
-//            File directory =
-//                new File("/Users/vladimir_kuznecov/Documents/Code/my/persona-academic-etl/tmp");
             File chunkFile = File.createTempFile("chunk", ".txt");
             try (BufferedWriter writer = new BufferedWriter(new FileWriter(chunkFile))) {
                 for (T d : data) {

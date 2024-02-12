@@ -1,14 +1,14 @@
 package ly.persona.academic.data.etl;
 
 import java.util.ArrayList;
+import java.util.List;
 import ly.persona.academic.data.DataGenerator;
 import ly.persona.academic.data.DataReader;
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.util.List;
-
 public final class TestDataEtlProcessTest {
+
     private final int hashCollisions = 2;
     private final int maxResult = 10;
 
@@ -44,7 +44,9 @@ public final class TestDataEtlProcessTest {
     }
 
     private DataGenerator<TestData> createDataGenerator(final int records) {
-        if (records < 100) throw new IllegalArgumentException("Too small result records");
+        if (records < 100) {
+            throw new IllegalArgumentException("Too small result records");
+        }
         return new DataGenerator<>(
             number -> {
                 String key = "key" + number % (records / hashCollisions);
@@ -59,7 +61,8 @@ public final class TestDataEtlProcessTest {
         // run etl process
         List<TestData> rows = etl.processToList(reader, maxResult);
         time = System.currentTimeMillis() - time;
-        System.out.println("Time " + (time / 1000) + " seconds for " + etl.getClass().getSimpleName());
+        System.out.println(
+            "Time " + (time / 1000) + " seconds for " + etl.getClass().getSimpleName());
 
         // check the result is limited
         Assert.assertEquals(maxResult, rows.size());

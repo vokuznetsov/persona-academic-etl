@@ -22,19 +22,17 @@ public class ExternalMergeSortEtlProcess<T> implements EtlProcess<T> {
     private static final Integer MAX_FILE_SIZE = 100_000;
 
     private final StorageService<T> fileService = new FileStorageServiceImpl<>();
-    private final DataProcessingPipeline<T> pipeline;
-
-    private final Class<T> clazz;
     private final Comparator<T> comparator;
     private final BinaryOperator<T> reduceFunction;
+    private final DataProcessingPipeline<T> dataProcessing;
+    private final Class<T> clazz;
 
-
-    public ExternalMergeSortEtlProcess(DataProcessingPipeline<T> pipeline, Class<T> clazz,
-        Comparator<T> comparator, BinaryOperator<T> reduceFunction) {
-        this.pipeline = pipeline;
-        this.clazz = clazz;
+    public ExternalMergeSortEtlProcess(Comparator<T> comparator, BinaryOperator<T> reduceFunction,
+        DataProcessingPipeline<T> pipeline, Class<T> clazz) {
         this.comparator = comparator;
         this.reduceFunction = reduceFunction;
+        this.dataProcessing = pipeline;
+        this.clazz = clazz;
     }
 
 
@@ -43,8 +41,7 @@ public class ExternalMergeSortEtlProcess<T> implements EtlProcess<T> {
         List<File> sortedFiles = new ArrayList<>();
 
         try (reader) {
-            for (List<T> data = getSortedChunkOfData(reader); !data.isEmpty();
-                data = getSortedChunkOfData(reader)) {
+            for (List<T> data = extractData(reader); !data.isEmpty(); data = extractData(reader)) {
                 sortedFiles.add(fileService.createFile(data));
             }
         }
@@ -65,10 +62,7 @@ public class ExternalMergeSortEtlProcess<T> implements EtlProcess<T> {
                 Map.Entry<T, BufferedReader> entry = pq.poll();
                 moveToNextRow(pq, entry.getValue());
 
-//                List<T> rows = mergeTheSameKeysFromDifferentStorages(entry.getKey(), pq);
-//                rows.forEach(row -> writer.write(row));
                 T row = mergeTheSameKeysFromDifferentStorages(entry.getKey(), pq);
-
                 writer.write(row);
             }
         } catch (IOException e) {
@@ -78,14 +72,16 @@ public class ExternalMergeSortEtlProcess<T> implements EtlProcess<T> {
         }
     }
 
+    /**
+     * This method is necessary to merge the same keys, which are located in different files. For
+     * example, file-1 has data {1, 2, 3} and file-2 has data {1, 3, 4} as a result the method merge
+     * `1` from both files and return `1` only once.
+     */
     private T mergeTheSameKeysFromDifferentStorages(T key,
         PriorityQueue<Map.Entry<T, BufferedReader>> pq) throws IOException {
         if (reduceFunction == null) {
             return key;
         }
-//        if (pipeline == null) {
-//            return List.of(key);
-//        }
         List<T> mergeKeys = new ArrayList<>();
 
         while (!pq.isEmpty() && key.equals(pq.peek().getKey())) {
@@ -93,8 +89,6 @@ public class ExternalMergeSortEtlProcess<T> implements EtlProcess<T> {
             moveToNextRow(pq, value.getValue());
             mergeKeys.add(value.getKey());
         }
-
-//        return pipeline.executePipelines(mergeKeys);
 
         return mergeKeys.stream().reduce(key, reduceFunction);
     }
@@ -109,7 +103,7 @@ public class ExternalMergeSortEtlProcess<T> implements EtlProcess<T> {
         }
     }
 
-    private List<T> getSortedChunkOfData(DataReader<T> reader) {
+    private List<T> extractData(DataReader<T> reader) {
         int count = 0;
         List<T> data = new ArrayList<>();
         for (T row = reader.read(); row != null && count < MAX_FILE_SIZE; row = reader.read()) {
@@ -117,7 +111,7 @@ public class ExternalMergeSortEtlProcess<T> implements EtlProcess<T> {
             count++;
         }
 
-        return pipeline.executePipelines(data);
+        return dataProcessing.executePipelines(data);
     }
 
     private void close(List<File> sortedFiles, PriorityQueue<Map.Entry<T, BufferedReader>> pq) {
