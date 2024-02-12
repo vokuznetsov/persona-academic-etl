@@ -15,6 +15,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.PriorityQueue;
 import java.util.function.BinaryOperator;
 import java.util.function.Predicate;
@@ -63,39 +64,30 @@ public class ExternalMergeSortEtlProcess<T> implements EtlProcess<T> {
         mergeSort(sortedFiles, writer);
     }
 
-    @SuppressWarnings("unchecked")
     private void mergeSort(List<File> sortedFiles, DataWriter<T> writer) {
-        PriorityQueue<BufferedReader> pq = new PriorityQueue<>((a, b) -> {
-            try {
-
-                a.mark(4096);
-                b.mark(4096);
-                var value =
-                    Comparator.nullsLast(comparator)
-                        .compare(deserialize(a.readLine()), deserialize(b.readLine()));
-                a.reset();
-                b.reset();
-                return value;
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        });
-
+        PriorityQueue<Map.Entry<T, BufferedReader>> pq =
+            new PriorityQueue<>((a, b) -> comparator.compare(a.getKey(), b.getKey()));
 
         try {
             for (File chunk : sortedFiles) {
                 BufferedReader reader = new BufferedReader(new FileReader(chunk));
-                pq.add(reader);
+                nextLine(pq, reader);
             }
             while (!pq.isEmpty()) {
-                BufferedReader reader = pq.poll();
-                String line = reader.readLine();
-                if (line != null) {
-                    writer.write(deserialize(line));
-                    pq.add(reader);
-                } else {
-                    reader.close();
+                Map.Entry<T, BufferedReader> entry = pq.poll();
+                T key = entry.getKey();
+                nextLine(pq, entry.getValue());
+
+                List<T> mergeKeys = new ArrayList<>();
+
+                while (!pq.isEmpty() && key.equals(pq.peek().getKey())) {
+                    Map.Entry<T, BufferedReader> value = pq.poll();
+                    nextLine(pq, value.getValue());
+                    mergeKeys.add(value.getKey());
                 }
+
+                T mergedData = mergeKeys.stream().reduce(key, reduceFunction);
+                writer.write(mergedData);
             }
 
             // Step 3: Clean up temporary files
@@ -104,6 +96,16 @@ public class ExternalMergeSortEtlProcess<T> implements EtlProcess<T> {
             }
         } catch (IOException e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    private void nextLine(PriorityQueue<Map.Entry<T, BufferedReader>> pq, BufferedReader br)
+        throws IOException {
+        String line = br.readLine();
+        if (line != null) {
+            pq.add(Map.entry(deserialize(line), br));
+        } else {
+            br.close();
         }
     }
 
@@ -123,10 +125,17 @@ public class ExternalMergeSortEtlProcess<T> implements EtlProcess<T> {
             count++;
         }
 
+
+        if (mapFunction != null) {
+            data = doMap(data, mapFunction);
+        }
+        if (reduceFunction != null) {
+            data = doReduce(data, reduceFunction);
+        }
+        if (filterFunction != null) {
+            data = doFilter(data, filterFunction);
+        }
         data.sort(comparator);
-        if (mapFunction != null)  data = doMap(data, mapFunction);
-        if (reduceFunction != null)  data = doReduce(data, reduceFunction);
-        if (filterFunction != null)  data = doFilter(data, filterFunction);
 
         return data;
     }
@@ -135,7 +144,7 @@ public class ExternalMergeSortEtlProcess<T> implements EtlProcess<T> {
         String fileName = String.format("chunk-%d", chunkNumber);
         try {
             File directory =
-                new File("/Users/vladimir_kuznecov/Documents/Code/edu/academic-etl/tmp");
+                new File("/Users/vladimir_kuznecov/Documents/Code/my/persona-academic-etl/tmp");
             File chunkFile = File.createTempFile(fileName, ".txt", directory);
             try (BufferedWriter writer = new BufferedWriter(new FileWriter(chunkFile))) {
                 for (T d : data) {

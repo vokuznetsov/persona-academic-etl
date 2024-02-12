@@ -29,13 +29,11 @@ public final class TestDataEtlProcessTest {
     public void testBigDataEtlProcess() {
         EtlProcess<TestData> etl = new BigDataEtlProcess();
         doTest(createDataGenerator(1_000_000), etl);
-//        doTest(createDataGenerator(101), etl);
     }
 
     @Test
     public void dataGeneratorTest() {
         DataGenerator<TestData> dataGenerator = createDataGenerator(1000000);
-//        DataGenerator<TestData> dataGenerator = createDataGenerator(101);
         List<TestData> list = new ArrayList<>();
         TestData value;
         do {

@@ -23,7 +23,8 @@ import ly.persona.academic.data.etl.impl.ExternalMergeSortEtlProcess;
 public class BigDataEtlProcess implements EtlProcess<TestData>, TestDataEtlOperations {
 
     private final ExternalMergeSortEtlProcess<TestData> fileProcessor =
-        new ExternalMergeSortEtlProcess<>(COMPARATOR, MAP_FUNCTION, REDUCE_FUNCTION,
+        new ExternalMergeSortEtlProcess<>(COMPARATOR, MAP_FUNCTION,
+            (o1, o2) -> new TestData(o1.getKey(), o1.getValue()),
             FILTER_FUNCTION);
 
     @Override
